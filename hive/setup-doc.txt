@@ -1,0 +1,91 @@
+# Example setup script for Hive using Hortonworks Data Platform
+
+# start 4 slave nodes w/ s3 access, ubuntu 16.04
+# start 1 master node w/ s3 access, ubuntu 16.04
+
+#On all nodes
+sudo wget -O /etc/apt/sources.list.d/ambari.list http://public-repo-1.hortonworks.com/ambari/ubuntu16/2.x/updates/2.6.1.0/ambari.list
+sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com B9733A7A07513CAD
+sudo apt-get update
+sudo apt-get install -y ntp python
+#disable huge pages
+echo "echo never > /sys/kernel/mm/transparent_hugepage/enabled" > hugepage.sh
+sudo bash hugepage.sh
+
+
+#on master
+sudo apt-get install ambari-server
+sudo ambari-server setup --jdbc-db=mysql --jdbc-driver=/..path to
+mysql-connector-java
+
+#Customize user account for ambari-server daemon [y/n] (n)? n
+#[1] Oracle JDK 1.8 + Java Cryptography Extension (JCE) Policy Files 8
+#[2] Oracle JDK 1.7 + Java Cryptography Extension (JCE) Policy Files 7
+#[3] Custom JDK
+#==============================================================================
+#Enter choice (1): 1
+
+#Do you accept the Oracle Binary Code License Agreement [y/n] (y)? y
+#Enable Ambari Server to download and install GPL Licensed LZO packages [y/n] (n)? n
+#Enter advanced database configuration [y/n] (n)? n
+
+sudo ambari-server start
+
+#add to etc hosts file master, slave1, slave2, etc.
+
+#copy your ssh key to /home/ubuntu/.ssh/id_rsa on all nodes
+#install all 
+
+#in ambari, login as user:admin pass:admin 
+#name cluster
+
+#install HDP 2.6.4.0
+
+#add hostnames and private key contents
+
+#Select HDFS 2.7.3, YARN + MapReduce2 2.7.3, Tex 0.7.0, Hive 1.2.1000, Pig 0.16.0, ZooKeeper 3.4.6, Ambari Metrics 0.1.0, Slider 0.92.0
+# Note: The reason I was using 1.2.1000 because that is what is packaged with the Hadoop Data Platform 2.6. They didn't package Hive 3.0.0 with HDP until Q3 2018.
+
+#Make the master do everything  Remove extra ZooKeeper Servers (Master should be the only master for all services)
+
+#All the slaves should be DataNodes and NodeManagers master should have client checked, nothing else
+
+#Set passwords as admin, admin everywhere
+
+#In Hive Options Set Interactive Query to yes, use 4 Nodes for LLAP, leave everything else constant Turn Yarn Pre-emtion on
+
+#Ignore All warnings start anyway
+
+#log into machine running hive metastore, change mysqld.cnf
+(/etc/mysql/mysql.conf.d/) remove bind-address
+
+#set hive parameters, daemon size to 70% of memory, cache to 50% of daemon size, heap to 50%
+in HDFS advanced options, in custom core-site 
+-set all proxyuser to * for all
+fs.s3a.connection.maximum=1500
+fs.s3a.connection.ssl.enabled=false
+fs.s3a.threads.max=twice the number of cores
+fs.s3a.experimental.input.fadvise=random
+
+in Yarn, turn preemption on, set maximum container size (vcores) to twice the
+number of cpus
+
+in hive setup:
+turn on interactive query
+set the number of nodes used by LLAP to the number of nodes
+set number of nudes for running Hive LLAP daemon to the number of nodes 
+set memory per daemon to 70% of total memory
+set in-memory cache per daemon to 35% of total memory
+set LLAP daemon Heap size to 35% of total memory
+
+set maximum am resource to 95%
+set user limit factor to 5 
+set minimum user limit to 100%
+set default queue capacity to 25% and max capacity to 100%
+set llap queue capacity to 75% and max capacity to 100%
+
+
+#in hdfs create /user/admin
+sudo -u hdfs hadoop fs -mkdir /user/admin
+sudo -u hdfs hadoop fs -chown admin:admin /user/admin
+sudo -u hdfs hadoop fs -chmod 0777 /user/admin
