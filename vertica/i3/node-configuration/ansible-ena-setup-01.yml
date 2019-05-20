@@ -1,0 +1,30 @@
+- hosts: tag_class_verticai38xl
+  sudo: yes
+  
+  tasks:
+  - name: Ensure git is installed.
+    yum: 
+      name: git
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  # Get amazon ena drivers
+  - git:
+      repo: https://github.com/amzn/amzn-drivers
+      dest: /root/amzn-drivers
+      version: ena_linux_1.2.0 
+      update: no
+
+  - name: Ensure epel rpm is installed
+    yum:
+      name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+      state: present
+
+  # Need epel repo for dkms
+  - name: enable epel
+    shell: "sudo yum-config-manager --enable epel"
+
+  - name: Ensure dkms is installed.
+    yum: 
+      name: dkms
+      state: present

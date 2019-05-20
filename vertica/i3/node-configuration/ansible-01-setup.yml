@@ -1,0 +1,153 @@
+- hosts: tag_class_verticai38xl
+  sudo: yes
+  
+  tasks:
+  - name: Ensure vim is installed.
+    yum: 
+      name: vim
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure pciutils is installed.
+    yum: 
+      name: pciutils
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure screen is installed.
+    yum: 
+      name: screen
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure LVM is installed.
+    yum: 
+      name: lvm2
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure ssm is installed.
+    yum: 
+      name: system-storage-manager
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  ### Benchmarking utils
+  - name: Ensure dstat is installed.
+    yum: 
+      name: dstat
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure iperf is installed.
+    yum: 
+      name: iperf3
+      state: present
+    when: ansible_os_family == 'RedHat' 
+
+  ### NFS
+  - name: Ensure nfs-utils is installed.
+    yum:
+      name: nfs-utils
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  # ensure nfs starts on boot
+  - service:
+      name: nfs
+      state: started
+      enabled: yes
+
+  ### Vertica-specific settings
+  # Ensure time zones are set correctly
+  - file:
+      path: /etc/sysconfig/clock
+      state: touch
+
+  - lineinfile:
+      path: /etc/sysconfig/clock
+      regexp: '^ZONE='
+      line: 'ZONE="America/New_York"'
+
+  - lineinfile:
+      path: /etc/profile
+      regexp: '^export TZ="America/New_York"'
+      line: 'export TZ="America/New_York"'
+      
+  # by default the vertica ami mounts the instance store on /mnt, so
+  # we need to remove this from fstab
+  - lineinfile:
+      path: /etc/fstab
+      regexp: '^/dev/xvdj[ \t]+/mnt[ \t]+'
+      state: absent
+
+  - name: unmount instance store from /mnt if originally mounted
+    mount:
+      path: /mnt
+      src: /dev/xvdj
+      state: unmounted
+
+  # Create vertica user and group
+  - group:
+      name: verticadba
+      state: present
+
+  - user:
+      name: dbadmin
+      comment: "vertica user"
+      group: verticadba
+
+  # Create dirs and user perms on them
+
+  - name: Create /mnt/active_mount dir
+    file: 
+      path: /mnt/active_mount 
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /mnt/ebs dir
+    file: 
+      path: /mnt/ebs
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /mnt/instancestore dir
+    file: 
+      path: /mnt/instancestore
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /mnt/nfs dir for nfs mounted data
+    file: 
+      path: /mnt/nfs
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /mnt/data dir for temp mounted data
+    file: 
+      path: /mnt/data
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  # create vg, lv, and filesystem for ebs volumes     
+  - lvg:
+      vg: vgebs
+      state: present
+      pvs: /dev/xvdc
+
+  - lvol:
+      vg: vgebs
+      lv: lvebs
+      pvs: /dev/xvdc
+      state: present
+      size: 100%FREE
+      shrink: false
+
+  - filesystem:
+      fstype: ext3
+      dev: /dev/vgebs/lvebs

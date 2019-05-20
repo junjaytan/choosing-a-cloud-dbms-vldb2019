@@ -1,0 +1,111 @@
+- hosts: tag_class_verticai38xl
+  sudo: yes
+
+  # see: https://gist.github.com/suprememoocow/11377153
+  tasks:
+  - name: Ensure mdadm is present.
+    yum: 
+      name: mdadm
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure LVM is installed.
+    yum: 
+      name: lvm2
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - file:
+      path: /etc/mdadm.conf
+      owner: root
+      group: root
+      mode: 0644
+      state: touch
+
+  - lineinfile:
+      path: /etc/mdadm.conf
+      #regexp: '^DEVICE /dev/xvd\[jklm\]$'
+      line: 'DEVICE /dev/nvme[0-9]n1'
+      state: present
+
+  - lineinfile:
+      path: /etc/mdadm.conf
+      regexp: '^ARRAY /dev/md1 devices=/dev/nvme0n1,/dev/nvme1n1,/dev/nvme2n1,/dev/nvme3n1$'
+      line: 'ARRAY /dev/nvme0n1,/dev/nvme1n1,/dev/nvme2n1,/dev/nvme3n1'
+
+  - name: check for /dev/md1
+    shell: "mdadm -D /dev/md1"
+    ignore_errors: yes
+    register: mdadm_check
+
+  - name: initialize /dev/md1
+    shell: "yes | mdadm -v --create /dev/md1 --level=raid0 --raid-devices=4 /dev/nvme0n1 /dev/nvme1n1 /dev/nvme2n1 /dev/nvme3n1"
+    when: mdadm_check.rc != 0
+
+  # this command doesn't seem to work--just wait a while after running and run a second
+  # time and it should work
+  - name: wait for /dev/md1 to come online
+    shell: "mdadm --wait /dev/md1"
+    when: mdadm_check.rc != 0
+
+  - filesystem:
+      fstype: ext3
+      dev: /dev/md1
+
+  - name: mount raid to /mnt/instancestore
+    mount:
+      path: /mnt/instancestore
+      fstype: ext3
+      opts: defaults,nofail
+      src: /dev/md1
+      state: mounted
+
+  - name: Ensure proper permissions on /mnt/instancestore dir
+    file: 
+      path: /mnt/instancestore
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /mnt/instancestore/nfs dir
+    file: 
+      path: /mnt/instancestore/nfs
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  # Scheduler is set on EBS volumes but does not appear set correctly on instance stores. So we set these.
+  - name: configure scheduler on nvme0n1
+    shell: "echo deadline > /sys/block/nvme0n1/queue/scheduler"
+
+  - name: configure scheduler on nvme1n1
+    shell: "echo deadline > /sys/block/nvme1n1/queue/scheduler"
+
+  - name: configure scheduler on nvme2n1
+    shell: "echo deadline > /sys/block/nvme2n1/queue/scheduler"
+
+  - name: configure scheduler on nvme3n1
+    shell: "echo deadline > /sys/block/nvme3n1/queue/scheduler"
+
+  - lineinfile:
+      path: /etc/rc.local
+      line: 'echo deadline > /sys/block/nvme0n1/queue/scheduler'
+      state: present
+
+  - lineinfile:
+      path: /etc/rc.local
+      line: 'echo deadline > /sys/block/nvme1n1/queue/scheduler'
+      state: present
+
+  - lineinfile:
+      path: /etc/rc.local
+      line: 'echo deadline > /sys/block/nvme2n1/queue/scheduler'
+      state: present
+
+  - lineinfile:
+      path: /etc/rc.local
+      line: 'echo deadline > /sys/block/nvme3n1/queue/scheduler'
+      state: present
+  
+  # may need to reboot before you can access drives
+  # To manually verify software raid devices, run: cat /proc/mdstat

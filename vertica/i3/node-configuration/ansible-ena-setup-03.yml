@@ -1,0 +1,18 @@
+- hosts: tag_class_verticai38xl
+  sudo: yes
+  
+  tasks:
+  # see: http://advancelinux.blogspot.com/2013/06/how-to-rebuild-initrd-or-initramfs-in.html
+  - name: backup initrd/initramfs if no backup exists 
+    shell: "test -f /boot/initramfs-$(uname -r).img.bak || cp /boot/initramfs-$(uname -r).img /boot/initramfs-$(uname -r).img.bak"
+
+  # You can manually verify backup was created: ll /boot/initramfs-$(uname -r).img*
+
+  - name: update initrd/initramfs 
+    shell: "dracut -f"
+
+  # You can manually verify the ena module is now installed via:>> modinfo ena
+
+  # Now stop the instances, and run aws cli command (for each instance):
+  # You can see if an instance has ena enabled via command: aws ec2 describe-instances --instance-ids YourInstanceId --query 'Reservations[].Instances[].EnaSupport'
+  # aws ec2 modify-instance-attribute --instance-id YourInstanceId --ena-support

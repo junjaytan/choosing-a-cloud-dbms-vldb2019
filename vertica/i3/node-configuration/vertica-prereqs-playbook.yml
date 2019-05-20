@@ -1,0 +1,72 @@
+- hosts: tag_class_verticai38xl
+  sudo: yes
+  tasks:
+  - name: Ensure vim is installed.
+    yum: 
+      name: vim
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure screen is installed.
+    yum: 
+      name: screen
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure dialog is installed.
+    yum: name=dialog state=present
+    when: ansible_os_family == 'RedHat'
+
+  # TODO: add deadline to scheduler but this is disk specific...
+
+  - name: Ensure tzdata is installed with latest version.
+    yum: 
+      name: tzdata
+      state: latest
+    when: ansible_os_family == 'RedHat'
+
+  # Ensure time zones are set correctly
+  - file:
+      path: /etc/sysconfig/clock
+      state: touch
+
+  - lineinfile:
+      path: /etc/sysconfig/clock
+      regexp: '^ZONE='
+      line: 'ZONE="America/New_York"'
+
+  - lineinfile:
+      path: /etc/profile
+      regexp: '^export TZ="America/New_York"'
+      line: 'export TZ="America/New_York"'
+
+  # for centos need gdb, for RHEL need pstack
+  - name: Ensure gdb is installed if CentOS
+    yum: name=gdb state=present
+    when: ansible_distribution == 'CentOS'
+  
+  #- name: Ensure pstack is installed if RHEL
+  #  yum: name=pstack state=present
+  #  when: ansible_distribution == 'RedHat'
+  #  #service: name=ntp state=started enabled=ye
+
+  - name: Ensure mcelog is installed
+    yum: name=mcelog state=present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure sysstat is installed
+    yum: name=sysstat state=present
+    when: ansible_os_family == 'RedHat'
+  
+  # Note: disk readahead was verified to be appropriate and so was not modified
+  # see: https://www.vertica.com/docs/9.2.x/HTML/Content/Authoring/InstallationGuide/BeforeYouInstall/DiskReadahead.htm
+  
+  - name: Ensure ntp is installed
+    yum: name=ntp state=present
+    when: ansible_os_family == 'RedHat'
+
+  # Put SELinux in permissive mode, logging actions that would be blocked.
+  # see: http://docs.ansible.com/ansible/selinux_module.html
+  - selinux:
+      policy: targeted
+      state: permissive

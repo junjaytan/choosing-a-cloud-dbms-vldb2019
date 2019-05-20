@@ -1,0 +1,36 @@
+- hosts: tag_class_verticai38xl
+  sudo: yes
+
+  # see: https://gist.github.com/suprememoocow/11377153
+  # also see: https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/5/html/Deployment_Guide/s2-swap-creating-file.html
+  tasks:
+
+  - name: define a 4GB swapfile 
+    shell: "dd if=/dev/zero of=/swapfile bs=1024 count=4096000"
+    ignore_errors: yes
+
+  - stat: path=/swapfile
+    register: swapfile_path
+
+  # chmod 0600 /swapfile
+  - file:
+      path: /swapfile
+      owner: root 
+      group: root
+      mode: 0600
+
+  - command: "mkswap /swapfile"
+    when: swapfile_path.stat.exists == False
+
+  - name: enable swapfile immediately 
+    shell: "swapon /swapfile"
+    ignore_errors: yes
+
+  - lineinfile:
+      path: /etc/fstab
+      line: '/swapfile swap swap defaults 0 0'
+      state: present
+
+  # if you run into errors enabling the swapfile, try deleting swapfile and running commands manually.
+  # You can then manually verify that swapfile is enabled via the following commands:
+  # cat /proc/swaps    or       free

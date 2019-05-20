@@ -1,0 +1,68 @@
+- hosts: tag_class_verticar48xl
+  sudo: yes
+
+  # Set up EBS volumes in raid 0
+  # see: https://gist.github.com/suprememoocow/11377153
+  tasks:
+  - name: Ensure mdadm is present.
+    yum: 
+      name: mdadm
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure LVM is installed.
+    yum: 
+      name: lvm2
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - file:
+      path: /etc/mdadm.conf
+      owner: root
+      group: root
+      mode: 0644
+      state: touch
+
+  - lineinfile:
+      path: /etc/mdadm.conf
+      regexp: '^DEVICE /dev/xvd\[defghijk\]$'
+      line: 'DEVICE /dev/xvd[defghijk]'
+
+  - lineinfile:
+      path: /etc/mdadm.conf
+      regexp: '^ARRAY /dev/md0 devices=/dev/xvdd,/dev/xvde,/dev/xvdf,/dev/xvdg,/dev/xvdh,/dev/xvdi,/dev/xvdj,/dev/xvdk$'
+      line: 'ARRAY /dev/md0 devices=/dev/xvdd,/dev/xvde,/dev/xvdf,/dev/xvdg,/dev/xvdh,/dev/xvdi,/dev/xvdj,/dev/xvdk'
+
+  - name: check for /dev/md0
+    shell: "mdadm -D /dev/md0"
+    ignore_errors: yes
+    register: mdadm_check
+
+  - name: initialize /dev/md0
+    shell: "yes | mdadm -v --create /dev/md0 --level=raid0 --raid-devices=8 /dev/xvdd /dev/xvde /dev/xvdf /dev/xvdg /dev/xvdh /dev/xvdi /dev/xvdj /dev/xvdk"
+    when: mdadm_check.rc != 0
+
+  # this command doesn't seem to work--just wait a while after running and run a second
+  # time and it should work
+  - name: wait for /dev/md0 to come online
+    shell: "mdadm --wait /dev/md0"
+    when: mdadm_check.rc != 0
+
+  - filesystem:
+      fstype: ext4
+      dev: /dev/md0
+
+  - name: mount raid to /mnt/active_mount
+    mount:
+      path: /mnt/active_mount
+      fstype: ext4
+      opts: defaults,nofail
+      src: /dev/md0
+      state: mounted
+
+  - name: Ensure proper permissions on /mnt/active_mount dir
+    file: 
+      path: /mnt/active_mount
+      state: directory
+      owner: dbadmin
+      group: verticadba

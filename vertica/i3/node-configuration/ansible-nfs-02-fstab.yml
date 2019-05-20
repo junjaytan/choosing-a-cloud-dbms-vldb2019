@@ -1,0 +1,63 @@
+- hosts: tag_Name_vertica_i38xlarge_0
+  sudo: yes
+
+  vars:
+    connect_node_ip: 172.31.22.249 
+    nfsdir: /mnt/instancestore/nfs
+    mountpoint: /mnt/nfs
+  
+  tasks:
+  - lineinfile:
+      path: /etc/fstab
+      line: '{{ connect_node_ip }}:{{ nfsdir }} {{ mountpoint }} nfs  nofail,nfsvers=3,rw,hard,intr,bg 0 0'
+      state: present
+  # Then need to run mount -a command
+
+# Example for setting up nodes if running NFS. Note that you will need to update
+# your node ips to the correct ips.
+### Node 2
+- hosts: tag_Name_vertica_i38xlarge_1
+  sudo: yes
+
+  vars:
+    connect_node_ip: 172.31.20.96
+    nfsdir: /mnt/instancestore/nfs
+    mountpoint: /mnt/nfs
+  
+  tasks:
+  - lineinfile:
+      path: /etc/fstab
+      line: '{{ connect_node_ip }}:{{ nfsdir }} {{ mountpoint }} nfs  nofail,nfsvers=3,rw,hard,intr,bg 0 0'
+      state: present
+
+### Node 3
+- hosts: tag_Name_vertica_i38xlarge_2 
+  sudo: yes
+
+  vars:
+    connect_node_ip: 172.31.28.221 
+    nfsdir: /mnt/instancestore/nfs
+    mountpoint: /mnt/nfs
+  
+  tasks:
+  - lineinfile:
+      path: /etc/fstab
+      line: '{{ connect_node_ip }}:{{ nfsdir }} {{ mountpoint }} nfs  nofail,nfsvers=3,rw,hard,intr,bg 0 0'
+      state: present
+
+
+### Node 4
+- hosts: tag_Name_vertica_i38xlarge_3 
+  sudo: yes
+
+  vars:
+    connect_node_ip: 172.31.31.49 
+    nfsdir: /mnt/instancestore/nfs
+    mountpoint: /mnt/nfs
+  
+  tasks:
+  - lineinfile:
+      path: /etc/fstab
+      line: '{{ connect_node_ip }}:{{ nfsdir }} {{ mountpoint }} nfs  nofail,nfsvers=3,rw,hard,intr,bg 0 0'
+      state: present
+

@@ -1,0 +1,113 @@
+- hosts: tag_class_verticar48xl
+  sudo: yes
+  
+  tasks:
+  - name: Ensure LVM is installed.
+    yum: 
+      name: lvm2
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure ssm is installed.
+    yum: 
+      name: system-storage-manager
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Install AWS cli
+    command: pip install awscli --upgrade --user
+    when: ansible_os_family == 'RedHat'
+    become: true
+
+  ### Benchmarking utils
+  - name: Ensure dstat is installed.
+    yum: 
+      name: dstat
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  - name: Ensure iperf is installed.
+    yum: 
+      name: iperf3
+      state: present
+    when: ansible_os_family == 'RedHat'
+
+  ### Vertica-specific settings
+  # Ensure time zones are set correctly
+  - file:
+      path: /etc/sysconfig/clock
+      state: touch
+
+  - lineinfile:
+      path: /etc/sysconfig/clock
+      regexp: '^ZONE='
+      line: 'ZONE="America/New_York"'
+
+  - lineinfile:
+      path: /etc/profile
+      regexp: '^export TZ="America/New_York"'
+      line: 'export TZ="America/New_York"'
+
+  # For holding temp vertica data (disk spill, etc)
+  - name: Create /mnt/verticatemp dir
+    file: 
+      path: /mnt/verticatemp 
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /mnt/active_mount dir
+    file: 
+      path: /mnt/active_mount 
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /mnt/ebs dir
+    file: 
+      path: /mnt/ebs
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /mnt/data dir for temp mounted data
+    file: 
+      path: /mnt/data
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /home/dbadmin/create_schemas dir for create schema sql scripts
+    file: 
+      path: /home/dbadmin/create_schemas
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  - name: Create /home/dbadmin/dstat_results dir for dstat results
+    file: 
+      path: /home/dbadmin/dstat_results
+      state: directory
+      owner: dbadmin
+      group: verticadba
+
+  # Create a ext4 filesystem on /dev/sdb1 for temp storage.
+  - filesystem:
+      fstype: ext4
+      dev: /dev/xvdc
+
+  # add appropriate line to fstab so it remounts upon restart
+  - name: mount temp storage 
+    mount:
+      path: /mnt/verticatemp
+      fstype: ext4
+      opts: defaults,nofail
+      src: /dev/xvdc
+      state: mounted
+
+  - name: Ensure perms for /mnt/verticatemp dir
+    file: 
+      path: /mnt/verticatemp 
+      state: directory
+      owner: dbadmin
+      group: verticadba

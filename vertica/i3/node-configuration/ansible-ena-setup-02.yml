@@ -1,0 +1,42 @@
+- hosts: tag_class_verticai38xl
+  sudo: yes
+  
+  tasks:
+  # we use dkms to install ena
+  # following these instructions: http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enhanced-networking-ena.html#enhanced-networking-ena-dkms-start-step
+  - stat: path=/usr/src/amzn-drivers-1.2.0
+    register: amzndrivers_path
+
+  - name: copy drivers to /usr/src
+    shell: "cp -a /root/amzn-drivers /usr/src/amzn-drivers-1.2.0"
+    when: amzndrivers_path.stat.exists == False
+
+  - copy:
+      src: ./dkms.conf
+      dest: /usr/src/amzn-drivers-1.2.0/dkms.conf 
+      owner: root
+      group: root
+
+  - name: add ena module to dkms
+    shell: "dkms add -m amzn-drivers -v 1.2.0"
+    ignore_errors: yes
+
+  # This has to be run, otherwise often it runs into errors
+  - name: rebuild kernel headers
+    shell: 'yum install -y "kernel-devel-uname-r == $(uname -r)"'
+
+  - name: build ena module using dkms
+    shell: "dkms build -m amzn-drivers -v 1.2.0"
+    ignore_errors: yes
+
+  - name: install ena module using dkms
+    shell: "dkms install -m amzn-drivers -v 1.2.0"
+    ignore_errors: yes
+
+  - name: update module dependencies
+    shell: "depmod"
+
+  # Note that normally we would need to adjust /etc/default/grub
+  # so that GRUB_CMDLINE_LINUX has option "net.ifnames=0"
+  # However, in our case this is already set up for the RHEL7 ami so it's fine
+  # see: http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enhanced-networking-ena.html#enhanced-networking-ena-dkms-start-step

@@ -1,0 +1,63 @@
+- hosts: tag_Name_vertica_i38xlarge_0
+  sudo: yes
+
+  vars:
+    connect_node_ip: 172.31.28.221
+  
+  tasks:
+  - lineinfile:
+      path: /etc/exports
+      line: '/mnt/instancestore/nfs {{ connect_node_ip }}(rw,sync,no_subtree_check)'
+      state: present
+
+  - name: reload exports
+    command: exportfs -ra
+
+### Node 2
+- hosts: tag_Name_vertica_i38xlarge_1
+  sudo: yes
+
+  vars:
+    connect_node_ip: 172.31.31.49 
+  
+  tasks:
+  - lineinfile:
+      path: /etc/exports
+      line: '/mnt/instancestore/nfs {{ connect_node_ip }}(rw,sync,no_subtree_check)'
+      state: present
+
+  - name: reload exports
+    command: exportfs -ra
+
+### Node 3
+- hosts: tag_Name_vertica_i38xlarge_2
+  sudo: yes
+
+  vars:
+    connect_node_ip: 172.31.22.249 
+  
+  tasks:
+  - lineinfile:
+      path: /etc/exports
+      line: '/mnt/instancestore/nfs {{ connect_node_ip }}(rw,sync,no_subtree_check)'
+      #state: absent
+
+  - name: reload exports
+    command: exportfs -ra
+
+
+### Node 4
+- hosts: tag_Name_vertica_i38xlarge_3
+  sudo: yes
+
+  vars:
+    connect_node_ip: 172.31.20.96 
+  
+  tasks:
+  - lineinfile:
+      path: /etc/exports
+      line: '/mnt/instancestore/nfs {{ connect_node_ip }}(rw,sync,no_subtree_check)'
+      #state: absent
+
+  - name: reload exports
+    command: exportfs -ra

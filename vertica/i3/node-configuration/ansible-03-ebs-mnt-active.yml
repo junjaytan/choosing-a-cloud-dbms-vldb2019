@@ -1,0 +1,32 @@
+- hosts: tag_class_verticai38xl
+  sudo: yes
+  
+  tasks:
+  # unmount ebs from ebs mount if present
+  - name: unmount ebs logical vol from /mnt/ebs if mounted
+    mount:
+      path: /mnt/ebs
+      src: /dev/vgebs/lvebs
+      state: unmounted
+
+  # For some reason the unmount command above unmounts but doesn't
+  # remove correctly from fstab, so explicitly removing it
+  - lineinfile:
+      path: /etc/fstab
+      regexp: '^/dev/vgebs/lvebs[ \t]+/mnt/ebs[ \t]+'
+      state: absent
+
+  - name: mount ebs logical vol to /mnt/active_mount
+    mount:
+      path: /mnt/active_mount
+      fstype: ext3
+      opts: defaults,nofail
+      src: /dev/vgebs/lvebs
+      state: mounted
+
+  - name: Ensure proper permissions on /mnt/active_mount dir
+    file: 
+      path: /mnt/active_mount
+      state: directory
+      owner: dbadmin
+      group: verticadba
